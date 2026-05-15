@@ -1,0 +1,110 @@
+[
+  {
+    "symbol": "USDC",
+    "name": "MockUSDC",
+    "decimals": 6,
+    "mintAddress": "FDYkUKHhKmYBbkPdvNTaD8GmYkjCK2U5AWr9bKDd8LCf",
+    "ata": "FfaHDEH4zXvRn16R54UA84U4Y95quKDMemJVkwFhstYW",
+    "minted": 5000000,
+    "network": "devnet",
+    "createdAt": "2026-05-07T09:51:44.457Z",
+    "createTx": "5eg6txYPkgyEA2UZThYLYPxms7mQUeocUwhDecQaaYHMkbrrq7xfGb4WG6XdwapHNUNREPzhhycbwuR3MWTpRzX7",
+    "mintTx": "dyxmchietrLF29Zxbn6hDdpmu9PmNQj4FpYE1eE1PjApnhduiDToTTgr8FJRa1mgZdi6BLy3aV9PRQsQeJXfT6F"
+  },
+  {
+    "symbol": "ETH",
+    "name": "MockETH",
+    "decimals": 18,
+    "mintAddress": "6vbrR9Y2RcnuC1tv2tZDV6RMitKECTqn16a5MD55VLjS",
+    "ata": "FTqKY4LR64HNivehZ2TTvWhGTVCLTMEZTsCS1A48VtXM",
+    "minted": 10000000,
+    "network": "devnet",
+    "createdAt": "2026-05-07T10:02:54.629Z",
+    "createTx": "2e6UuKeyqxDj7v7Znx2dXLB1CvH6RzHq9iCf1JuyS8QaEAHUNKAJLpW7TKZU4K1jy6T8ANJGUKp38F8M5PzzZMaC",
+    "mintTx": "4snqXCigtJA8Wn4ydNTFam7hZmtPodGFeSvUTcnuCP2TMhqsmmsAR41aoUTG279NZ1qSb1o8BVo7UaE3cTVTifU8"
+  },
+  {
+    "symbol": "BTC",
+    "name": "MockBTC",
+    "decimals": 8,
+    "mintAddress": "54qmSUuKoBNXrJMKCpZPJmwnJLbS8tvEuwaBHjK7jzpA",
+    "ata": "Gjy72ZaqRULzv1JaRGTVDq18SqC7EpGTxi1AcMXn3hpX",
+    "minted": 7000000,
+    "network": "devnet",
+    "createdAt": "2026-05-07T10:54:17.245Z",
+    "createTx": "9Z1P1VmpJXc2V4jJ5VDRdcFToRCTCnBjXioaHCUepJEvYxeZdHGf4ZUSgNR4jkEwBxznP1dR4wPfeLYppxz8XVh",
+    "mintTx": "2vWtMLzvJoG5tbJUY1uRvgLZe7ck5UbJRyYu6R4DvRydN4fnmzBeVArqQ2j4cnW8Xeo8prQ5EQrXg2pbcsLrjcMF"
+  },
+  {
+    "symbol": "JIG",
+    "name": "Jigra Token",
+    "mintAddress": "J1FUULNhDxoBAeWCasHBWNVLDa7TFCMTAbGo1xp7foST",
+    "decimals": 8,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-11T04:53:19.628Z"
+  },
+  {
+    "symbol": "DHO",
+    "name": "Dholna",
+    "mintAddress": "D2SpCk1LZFFbsfzBXES61MTm23mziTsFYu1XY7rSLeXE",
+    "decimals": 6,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-11T04:53:19.634Z"
+  },
+  {
+    "symbol": "GEN",
+    "name": "generationZ",
+    "mintAddress": "GeBYSzDeH5wtwcupVJk6H3JT7Ry2gH6viHFo32xRrA8w",
+    "decimals": 6,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-11T05:48:18.567Z"
+  },
+  {
+    "symbol": "DDD",
+    "name": "Dil Dosti Dance",
+    "mintAddress": "D5Az4rH8LTzLJnGBxmhvxJgMbzyiXdYvoa647GHb1Gyw",
+    "decimals": 8,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-11T05:48:18.578Z"
+  },
+  {
+    "symbol": "DPJ",
+    "name": "Dhinchak Pooja Token",
+    "mintAddress": "DL3Ka7WFtHrwwfFiofY6ZbpDsoCxw5Vyz9FZx9tHPQsM",
+    "decimals": 6,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-14T08:53:31.921Z"
+  },
+  {
+    "symbol": "FRK",
+    "name": "Frankenstein",
+    "mintAddress": "F6nkFMZjjJXSKQ1WQykDPkSHdorUYWYEP6w6L9us9TU1",
+    "decimals": 9,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-14T08:53:31.927Z"
+  },
+  {
+    "symbol": "TTKNN1",
+    "name": "Test Token 1",
+    "mintAddress": "36KfNkyc8DjVxU5WF9B1TuYVXPhdq1CTQxcoD1L8GCbK",
+    "decimals": 6,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-14T11:53:33.182Z"
+  },
+  {
+    "symbol": "TTKNN2",
+    "name": "Test Token 2",
+    "mintAddress": "5yVokPKGCLHjC8LGQ26NJx1EXFMrpcNjEGPcgtt8EdRn",
+    "decimals": 9,
+    "balance": "0",
+    "network": "devnet",
+    "createdAt": "2026-05-14T11:53:33.190Z"
+  }
+]
