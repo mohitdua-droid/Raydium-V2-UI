@@ -45,8 +45,7 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
       const tokensData = await tokensRes.json();
 
       // 2. Fetch Pools for LP checks
-      const poolsRes = await fetch('/pools.json?t=' + Date.now());
-      const poolsData = await poolsRes.json();
+      const onChainPools = await (program.account as any).poolState.all();
 
       const colors = ['#a78bfa', '#00d4c8', '#8bb2ff', '#f472b6', '#fbbf24'];
 
@@ -71,40 +70,44 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
       }));
 
       // Fetch LP balances and calculate pool assets
-      const lpAssets = await Promise.all(poolsData.map(async (p: any, idx: number) => {
+      const lpAssets = await Promise.all(onChainPools.map(async (p: any, idx: number) => {
+        const poolAccount = p.account;
+        const lpMintStr = poolAccount.lpMint.toBase58();
+        const tokenAMintStr = poolAccount.mintA.toBase58();
+        const tokenBMintStr = poolAccount.mintB.toBase58();
+
         let lpBalance = "0";
         let amountA = "0";
         let amountB = "0";
 
         try {
-          const userAta = getAssociatedTokenAddressSync(new PublicKey(p.lpMint), new PublicKey(fullAddress));
+          const userAta = getAssociatedTokenAddressSync(new PublicKey(lpMintStr), new PublicKey(fullAddress));
           const balanceInfo = await connection.getTokenAccountBalance(userAta);
           lpBalance = balanceInfo.value.uiAmountString || "0";
 
           if (parseFloat(lpBalance) > 0) {
-            const poolAccount: any = await (program.account as any).poolState.fetch(p.pool);
             const totalLpSupply = poolAccount.lpSupply.toString();
 
             // Share calculation: (userLp / totalLp) * reserves
             // LP mint decimals is 6 based on the program's initialize_pool instruction
             const share = parseFloat(lpBalance) / (parseInt(totalLpSupply) / 1e6);
 
-            const tokenA = tokensData.find((t: any) => t.mintAddress === p.tokenAMint);
-            const tokenB = tokensData.find((t: any) => t.mintAddress === p.tokenBMint);
+            const tokenA = tokensData.find((t: any) => t.mintAddress === tokenAMintStr);
+            const tokenB = tokensData.find((t: any) => t.mintAddress === tokenBMintStr);
 
             amountA = ((parseInt(poolAccount.reserveA.toString()) / Math.pow(10, tokenA?.decimals || 9)) * share).toFixed(2);
             amountB = ((parseInt(poolAccount.reserveB.toString()) / Math.pow(10, tokenB?.decimals || 9)) * share).toFixed(2);
           }
         } catch (e) { }
 
-        const tokenA = tokensData.find((t: any) => t.mintAddress === p.tokenAMint);
-        const tokenB = tokensData.find((t: any) => t.mintAddress === p.tokenBMint);
+        const tokenA = tokensData.find((t: any) => t.mintAddress === tokenAMintStr);
+        const tokenB = tokensData.find((t: any) => t.mintAddress === tokenBMintStr);
 
         return {
           symbol: `${tokenA?.symbol || '?'}-${tokenB?.symbol || '?'}`,
-          mint: p.lpMint,
-          tokenAMint: p.tokenAMint,
-          tokenBMint: p.tokenBMint,
+          mint: lpMintStr,
+          tokenAMint: tokenAMintStr,
+          tokenBMint: tokenBMintStr,
           balance: lpBalance,
           amountA,
           amountB,

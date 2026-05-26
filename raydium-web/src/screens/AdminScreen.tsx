@@ -84,9 +84,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       const provider = new AnchorProvider(connection, (window as any).solana || {}, { commitment: "confirmed" });
       const program = new Program(idl as Idl, provider);
 
+      let allConfigs: any[] = [];
       // Fetch every ammConfig account to know available indices
       try {
-        const allConfigs = await (program.account as any).ammConfig.all();
+        allConfigs = await (program.account as any).ammConfig.all();
         const indices = allConfigs.map((c: any) => c.account.index).sort((a: number, b: number) => a - b);
         setAvailableConfigs(indices);
 
@@ -112,46 +113,43 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       const symbolMap = new Map<string, string>(tokensData.map((m: any) => [m.mintAddress, m.symbol]));
       const decimalMap = new Map<string, number>(tokensData.map((m: any) => [m.mintAddress, m.decimals || 9]));
 
-      const poolsRes = await fetch('/pools.json?t=' + Date.now());
-      const poolsJson = await poolsRes.json();
+      const configMap = new Map<string, number>(allConfigs.map((c: any) => [c.publicKey.toBase58(), c.account.index]));
+      const onChainPools = await (program.account as any).poolState.all();
 
-      const loadedPools: Pool[] = await Promise.all(poolsJson.map(async (p: any) => {
-        let reserveA = "0";
-        let reserveB = "0";
-        let status = 1;
+      const loadedPools: Pool[] = await Promise.all(onChainPools.map(async (p: any) => {
+        const poolAccount = p.account;
+        const poolPubkeyStr = p.publicKey.toBase58();
+        const tokenAMintStr = poolAccount.mintA.toBase58();
+        const tokenBMintStr = poolAccount.mintB.toBase58();
+        const configIndexVal = configMap.get(poolAccount.ammconfig.toBase58()) || 1;
 
-        try {
-          const poolAccount: any = await (program.account as any).poolState.fetch(p.pool);
-          reserveA = poolAccount.reserveA.toString();
-          reserveB = poolAccount.reserveB.toString();
-          status = poolAccount.status || 1;
-        } catch (e) {
-          console.warn(`Could not fetch state for pool ${p.pool}`, e);
-        }
+        const reserveA = poolAccount.reserveA.toString();
+        const reserveB = poolAccount.reserveB.toString();
+        const status = poolAccount.status || 1;
 
-        const decA = decimalMap.get(p.tokenAMint) || 9;
-        const decB = decimalMap.get(p.tokenBMint) || 9;
+        const decA = decimalMap.get(tokenAMintStr) || 9;
+        const decB = decimalMap.get(tokenBMintStr) || 9;
         const valA = (parseInt(reserveA) / Math.pow(10, decA)).toFixed(5);
         const valB = (parseInt(reserveB) / Math.pow(10, decB)).toFixed(5);
 
         return {
-          id: p.pool,
+          id: poolPubkeyStr,
           tokenA: {
-            symbol: symbolMap.get(p.tokenAMint) || p.tokenAMint.slice(0, 4),
-            name: symbolMap.get(p.tokenAMint) || "Unknown",
-            mint: p.tokenAMint,
+            symbol: symbolMap.get(tokenAMintStr) || tokenAMintStr.slice(0, 4),
+            name: symbolMap.get(tokenAMintStr) || "Unknown",
+            mint: tokenAMintStr,
           },
           tokenB: {
-            symbol: symbolMap.get(p.tokenBMint) || p.tokenBMint.slice(0, 4),
-            name: symbolMap.get(p.tokenBMint) || "Unknown",
-            mint: p.tokenBMint,
+            symbol: symbolMap.get(tokenBMintStr) || tokenBMintStr.slice(0, 4),
+            name: symbolMap.get(tokenBMintStr) || "Unknown",
+            mint: tokenBMintStr,
           },
           liquidity: `(${valA}/${valB})`,
           volume24h: "0",
           fees24h: "0",
           apr24h: "0",
           status: status,
-          configIndex: p.configIndex
+          configIndex: configIndexVal
         };
       }));
 

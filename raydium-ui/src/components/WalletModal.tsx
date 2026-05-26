@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Image } from 'react-native';
 import { colors } from '../theme/colors';
+
+const phantomLogo = require('../../assets/phantom-logo.png');
 
 interface WalletModalProps {
   visible: boolean;
@@ -32,12 +34,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ visible, onClose, onCo
               onPress={() => onConnect('Phantom')}
             >
               <View style={[styles.iconPlaceholder, { backgroundColor: '#534bb1' }]}>
-                <Text style={styles.iconText}>👻</Text>
-              </View>
-              <View style={styles.walletInfo}>
-                <Text style={styles.walletName}>Phantom</Text>
-                <Text style={styles.walletDesc}>Solana's most popular wallet</Text>
-              </View>
+                <Image source={phantomLogo} style={styles.walletLogo} resizeMode="contain" />
               <Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
 
@@ -131,6 +128,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  walletLogo: {
+    width: 32,
+    height: 32,
   },
   iconText: {
     fontSize: 24,

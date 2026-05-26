@@ -5,7 +5,6 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
 import idl from '../assets/idl/raydium.json';
-// import poolsData from '../assets/data/pools.json';
 
 import { CreatePoolModal } from '../components/CreatePoolModal';
 import { DepositModal } from '../components/DepositModal';
@@ -65,27 +64,27 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
       const symbolMap = new Map<string, string>(tokensData.map((m: any) => [m.mintAddress, m.symbol]));
       const mintDecimalsMap = new Map<string, number>(tokensData.map((m: any) => [m.mintAddress, m.decimals]));
 
-      const poolsRes = await fetch('/pools.json?t=' + Date.now());
-      const poolsJson = await poolsRes.json();
+      const configs = await (program.account as any).ammConfig.all();
+      const configMap = new Map<string, number>(configs.map((c: any) => [c.publicKey.toBase58(), c.account.index]));
 
-      const loadedPools: Pool[] = await Promise.all(poolsJson.map(async (p: any) => {
-        let reserveA = "0";
-        let reserveB = "0";
-        let status = p.status || 1;
+      const onChainPools = await (program.account as any).poolState.all();
 
-        try {
-          const poolAccount: any = await (program.account as any).poolState.fetch(p.pool);
-          reserveA = poolAccount.reserveA.toString();
-          reserveB = poolAccount.reserveB.toString();
-          status = poolAccount.status || 1;
-        } catch (e) {
-          console.warn(`Could not fetch state for pool ${p.pool}`, e);
-        }
+      const loadedPools: Pool[] = await Promise.all(onChainPools.map(async (p: any) => {
+        const poolAccount = p.account;
+        const poolPubkeyStr = p.publicKey.toBase58();
+
+        const reserveA = poolAccount.reserveA.toString();
+        const reserveB = poolAccount.reserveB.toString();
+        const status = poolAccount.status || 1;
+        const lpMint = poolAccount.lpMint.toBase58();
+        const tokenAMint = poolAccount.mintA.toBase58();
+        const tokenBMint = poolAccount.mintB.toBase58();
+        const configIndex = configMap.get(poolAccount.ammconfig.toBase58()) || 1;
 
         let userLpBalance = "0";
-        if (fullAddress && p.lpMint) {
+        if (fullAddress && lpMint) {
           try {
-            const userAta = getAssociatedTokenAddressSync(new PublicKey(p.lpMint), new PublicKey(fullAddress));
+            const userAta = getAssociatedTokenAddressSync(new PublicKey(lpMint), new PublicKey(fullAddress));
             const balanceInfo = await connection.getTokenAccountBalance(userAta);
             userLpBalance = parseFloat(balanceInfo.value.uiAmountString || "0").toFixed(2);
           } catch (e) {
@@ -93,23 +92,23 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
           }
         }
 
-        const decA = mintDecimalsMap.get(p.tokenAMint) || 9;
-        const decB = mintDecimalsMap.get(p.tokenBMint) || 9;
+        const decA = mintDecimalsMap.get(tokenAMint) || 9;
+        const decB = mintDecimalsMap.get(tokenBMint) || 9;
         const valA = (parseInt(reserveA) / Math.pow(10, decA)).toFixed(5);
         const valB = (parseInt(reserveB) / Math.pow(10, decB)).toFixed(5);
 
         return {
-          id: p.pool,
+          id: poolPubkeyStr,
           tokenA: {
-            symbol: symbolMap.get(p.tokenAMint) || p.tokenAMint.slice(0, 4),
-            name: symbolMap.get(p.tokenAMint) || "Unknown",
-            mint: p.tokenAMint,
+            symbol: symbolMap.get(tokenAMint) || tokenAMint.slice(0, 4),
+            name: symbolMap.get(tokenAMint) || "Unknown",
+            mint: tokenAMint,
             decimals: decA
           },
           tokenB: {
-            symbol: symbolMap.get(p.tokenBMint) || p.tokenBMint.slice(0, 4),
-            name: symbolMap.get(p.tokenBMint) || "Unknown",
-            mint: p.tokenBMint,
+            symbol: symbolMap.get(tokenBMint) || tokenBMint.slice(0, 4),
+            name: symbolMap.get(tokenBMint) || "Unknown",
+            mint: tokenBMint,
             decimals: decB
           },
           liquidity: `(${valA}/${valB})`,
@@ -117,8 +116,8 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
           fees24h: "0",
           apr24h: "0",
           status: status.toString(),
-          configIndex: p.configIndex,
-          lpMint: p.lpMint,
+          configIndex: configIndex,
+          lpMint: lpMint,
           userLpBalance: userLpBalance
         };
       }));

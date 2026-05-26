@@ -197,11 +197,15 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
 
       // 1. Save any new tokens to mintaddresses.json (Metadata only)
       for (const token of newTokensToSave) {
-        await fetch('http://localhost:3001/api/save-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(token),
-        });
+        try {
+          await fetch('http://localhost:3001/api/save-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(token),
+          });
+        } catch (e) {
+          console.warn("Could not save new token metadata to local server:", e);
+        }
       }
 
       // 2. Prepare transaction accounts
@@ -268,22 +272,26 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
       console.log('Pool initialized successfully, tx:', tx);
 
       // 4. Save pool info to pools.json so it appears in the Liquidity list
-      await fetch('http://localhost:3001/api/save-pool', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pool: pool.toBase58(),
-          ammConfig: ammConfig.toBase58(),
-          configIndex,
-          tokenAMint: tokenAMint.toBase58(),
-          tokenBMint: tokenBMint.toBase58(),
-          lpMint: lpMint.toBase58(),
-          authority: authority.toBase58(),
-          vaultA: vaultA.toBase58(),
-          vaultB: vaultB.toBase58(),
-          programId: program.programId.toBase58(),
-        }),
-      });
+      try {
+        await fetch('http://localhost:3001/api/save-pool', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pool: pool.toBase58(),
+            ammConfig: ammConfig.toBase58(),
+            configIndex,
+            tokenAMint: tokenAMint.toBase58(),
+            tokenBMint: tokenBMint.toBase58(),
+            lpMint: lpMint.toBase58(),
+            authority: authority.toBase58(),
+            vaultA: vaultA.toBase58(),
+            vaultB: vaultB.toBase58(),
+            programId: program.programId.toBase58(),
+          }),
+        });
+      } catch (e) {
+        console.warn("Could not save new pool metadata to local server:", e);
+      }
 
       onClose();
     } catch (err: any) {
