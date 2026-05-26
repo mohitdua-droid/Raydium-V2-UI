@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Zap, LogOut, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown } from 'lucide-react';
 
 export type TabType = 'Swap' | 'Liquidity' | 'Portfolio' | 'Admin';
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, RefreshCcw, ArrowLeftRight, Info, Wallet, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, RefreshCcw, ArrowLeftRight, Info, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -329,9 +329,9 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
           fetchPoolData();
         }}
         pool={selectedPool}
-        connectedWallet={connectedWallet}
-        fullAddress={fullAddress}
-        onConnectWallet={onConnectWallet}
+        connectedWallet={connectedWallet || null}
+        fullAddress={fullAddress || null}
+        onConnectWallet={onConnectWallet ? onConnectWallet : () => { }}
       />
       <WithdrawModal
         isOpen={isWithdrawModalOpen}
@@ -340,7 +340,7 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
           fetchPoolData();
         }}
         pool={selectedPool}
-        fullAddress={fullAddress}
+        fullAddress={fullAddress || null}
       />
     </div>
   );

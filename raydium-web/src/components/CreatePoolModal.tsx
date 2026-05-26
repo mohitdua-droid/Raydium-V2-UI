@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Connection,
   PublicKey,
-  SystemProgram,
-  Transaction,
-  VersionedTransaction,
-  TransactionMessage
+  SystemProgram
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, type Idl } from '@coral-xyz/anchor';
 import {

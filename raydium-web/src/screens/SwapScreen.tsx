@@ -63,7 +63,7 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
   const [toAmount, setToAmount] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<'from' | 'to' | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
+
   const [poolExists, setPoolExists] = useState(true);
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [lastTyped, setLastTyped] = useState<'from' | 'to'>('from');
@@ -164,7 +164,7 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
             if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
               setToAmount(''); setPriceImpact(null); return;
             }
-            setIsCalculating(true);
+
             const amountIn = parseFloat(fromAmount);
             const amountInEffective = amountIn * 0.9975;
             const amountOut = (resRecv * amountInEffective) / (resPay + amountInEffective);
@@ -177,7 +177,7 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
             if (!toAmount || isNaN(parseFloat(toAmount)) || parseFloat(toAmount) <= 0) {
               setFromAmount(''); setPriceImpact(null); return;
             }
-            setIsCalculating(true);
+
             const amountOut = parseFloat(toAmount);
             if (amountOut >= resRecv) {
               setFromAmount('Insufficient Liquidity'); setPriceImpact(100); return;
@@ -195,7 +195,7 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
           if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
             setToAmount(''); setPriceImpact(null); return;
           }
-          setIsCalculating(true);
+
           const amountOut = parseFloat(fromAmount); // top box = desired output
           if (amountOut >= resRecv) {
             setToAmount('Insufficient Liquidity'); setPriceImpact(100); return;
@@ -211,7 +211,7 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
         setPoolExists(false);
         setPriceImpact(null);
       } finally {
-        setIsCalculating(false);
+
       }
     };
 
