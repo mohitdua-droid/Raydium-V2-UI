@@ -301,7 +301,6 @@ async function handleInit(program: Program<Raydium>, user: Keypair, args: string
   const [ammConfig] = PublicKey.findProgramAddressSync([AMM_CONFIG_SEED, new anchor.BN(configIndex).toArrayLike(Buffer, "le", 2)], program.programId);
 
   await runInit(program, user, mintA, mintB, ammConfig, amtA, amtB);
-  await savePoolToFile(program, mintA, mintB, ammConfig, configIndex);
   await runStatus(program, mintA, mintB);
 }
 
@@ -319,54 +318,7 @@ function getLpMintPda(programId: PublicKey, mint0: PublicKey, mint1: PublicKey) 
   return PublicKey.findProgramAddressSync([LP_MINT_SEED, a.toBuffer(), b.toBuffer()], programId)[0];
 }
 
-async function savePoolToFile(
-  program: Program<Raydium>,
-  tokenAMint: PublicKey,
-  tokenBMint: PublicKey,
-  ammConfig: PublicKey,
-  configIndex: number
-) {
-  const pool = getPoolPda(program.programId, tokenAMint, tokenBMint);
-  const lpMint = getLpMintPda(program.programId, tokenAMint, tokenBMint);
-  const [authority] = PublicKey.findProgramAddressSync([AUTHORITY_SEED, pool.toBuffer()], program.programId);
-  const [vaultA] = PublicKey.findProgramAddressSync([VAULT_A_SEED, pool.toBuffer()], program.programId);
-  const [vaultB] = PublicKey.findProgramAddressSync([VAULT_B_SEED, pool.toBuffer()], program.programId);
 
-  const poolEntry = {
-    pool: pool.toBase58(),
-    ammConfig: ammConfig.toBase58(),
-    configIndex,
-    tokenAMint: tokenAMint.toBase58(),
-    tokenBMint: tokenBMint.toBase58(),
-    lpMint: lpMint.toBase58(),
-    authority: authority.toBase58(),
-    vaultA: vaultA.toBase58(),
-    vaultB: vaultB.toBase58(),
-    programId: program.programId.toBase58(),
-    initializedAt: new Date().toISOString(),
-  };
-
-  const filePath = path.resolve(__dirname, "../raydium-web/src/assets/data/pools.json");
-  let pools: typeof poolEntry[] = [];
-
-  if (fs.existsSync(filePath)) {
-    const existing = fs.readFileSync(filePath, "utf-8");
-    pools = JSON.parse(existing);
-  }
-
-  // Avoid duplicates — replace if same pool PDA already exists
-  const idx = pools.findIndex((p) => p.pool === poolEntry.pool);
-  if (idx >= 0) {
-    pools[idx] = poolEntry;
-    console.log("   Pool entry updated in pools.json");
-  } else {
-    pools.push(poolEntry);
-    console.log("   Pool entry saved to pools.json");
-  }
-
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(pools, null, 2));
-}
 
 
 async function runInit(program: Program<Raydium>, user: Keypair, tokenAMint: PublicKey, tokenBMint: PublicKey, ammConfig: PublicKey, amtA: anchor.BN, amtB: anchor.BN) {
@@ -611,8 +563,10 @@ async function handleCollectFees(program: Program<Raydium>, user: Keypair, args:
   const [authority] = PublicKey.findProgramAddressSync([AUTHORITY_SEED, pool.toBuffer()], program.programId);
   const [vaultA] = PublicKey.findProgramAddressSync([VAULT_A_SEED, pool.toBuffer()], program.programId);
   const [vaultB] = PublicKey.findProgramAddressSync([VAULT_B_SEED, pool.toBuffer()], program.programId);
-  const userAtaA = getAssociatedTokenAddressSync(tokenAMint, user.publicKey, false, poolState.tokenProgramA);
-  const userAtaB = getAssociatedTokenAddressSync(tokenBMint, user.publicKey, false, poolState.tokenProgramB);
+  const userAtaAAcc = await getOrCreateAssociatedTokenAccount(program.provider.connection, user, tokenAMint, user.publicKey, false, "confirmed", {}, poolState.tokenProgramA);
+  const userAtaBAcc = await getOrCreateAssociatedTokenAccount(program.provider.connection, user, tokenBMint, user.publicKey, false, "confirmed", {}, poolState.tokenProgramB);
+  const userAtaA = userAtaAAcc.address;
+  const userAtaB = userAtaBAcc.address;
 
   const accounts = {
     owner: user.publicKey, ammConfig: poolState.ammconfig, pool, tokenAMint, tokenBMint, vaultA, vaultB,

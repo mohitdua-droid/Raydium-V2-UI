@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { ExternalLink, ChevronRight } from 'lucide-react';
 import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
 import idl from '../assets/idl/raydium.json';
@@ -40,34 +40,52 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
       const provider = new AnchorProvider(connection, (window as any).solana || {}, { commitment: "confirmed" });
       const program = new Program(idl as Idl, provider);
 
-      // 1. Fetch Tokens
-      const tokensRes = await fetch('/mintaddresses.json?t=' + Date.now());
-      const tokensData = await tokensRes.json();
-
-      // 2. Fetch Pools for LP checks
-      const onChainPools = await (program.account as any).poolState.all();
+      // 1. Fetch user's token accounts
+      const userPubkey = new PublicKey(fullAddress);
+      const [tokenAccounts, token2022Accounts] = await Promise.all([
+        connection.getParsedTokenAccountsByOwner(userPubkey, { programId: TOKEN_PROGRAM_ID }),
+        connection.getParsedTokenAccountsByOwner(userPubkey, { programId: TOKEN_2022_PROGRAM_ID })
+      ]);
+      const allAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
 
       const colors = ['#a78bfa', '#00d4c8', '#8bb2ff', '#f472b6', '#fbbf24'];
 
-      // Fetch normal token balances
-      const tokenBalances = await Promise.all(tokensData.map(async (t: any, idx: number) => {
-        let balance = "0";
-        try {
-          const userAta = getAssociatedTokenAddressSync(new PublicKey(t.mintAddress), new PublicKey(fullAddress));
-          const balanceInfo = await connection.getTokenAccountBalance(userAta);
-          balance = balanceInfo.value.uiAmountString || "0";
-        } catch (e) {
-          // No ATA
-        }
+      const tokenBalances = allAccounts.map((acc, idx) => {
+        const info = acc.account.data.parsed.info;
         return {
-          symbol: t.symbol,
-          mint: t.mintAddress,
-          balance,
+          symbol: info.mint.slice(0, 4),
+          mint: info.mint,
+          balance: info.tokenAmount.uiAmountString || "0",
           valueUsd: "0",
           percentage: "0",
           color: colors[idx % colors.length]
         };
-      }));
+      });
+
+      // 2. Fetch Pools for LP checks
+      const onChainPools = await (program.account as any).poolState.all();
+
+      const uniqueMints = new Set<string>();
+      onChainPools.forEach((p: any) => {
+        uniqueMints.add(p.account.mintA.toBase58());
+        uniqueMints.add(p.account.mintB.toBase58());
+      });
+      const mintArray = Array.from(uniqueMints);
+      const mintPubkeys = mintArray.map(m => new PublicKey(m));
+      
+      const mintInfos = [];
+      for (let i = 0; i < mintPubkeys.length; i += 100) {
+        const chunk = mintPubkeys.slice(i, i + 100);
+        const infos = await connection.getMultipleAccountsInfo(chunk);
+        mintInfos.push(...infos);
+      }
+      
+      const mintDecimalsMap = new Map<string, number>();
+      mintInfos.forEach((info, i) => {
+        if (info && info.data && info.data.length >= 82) {
+          mintDecimalsMap.set(mintArray[i], info.data[44]);
+        }
+      });
 
       // Fetch LP balances and calculate pool assets
       const lpAssets = await Promise.all(onChainPools.map(async (p: any, idx: number) => {
@@ -92,19 +110,19 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = ({
             // LP mint decimals is 6 based on the program's initialize_pool instruction
             const share = parseFloat(lpBalance) / (parseInt(totalLpSupply) / 1e6);
 
-            const tokenA = tokensData.find((t: any) => t.mintAddress === tokenAMintStr);
-            const tokenB = tokensData.find((t: any) => t.mintAddress === tokenBMintStr);
+            const decA = mintDecimalsMap.get(tokenAMintStr) || 9;
+            const decB = mintDecimalsMap.get(tokenBMintStr) || 9;
 
-            amountA = ((parseInt(poolAccount.reserveA.toString()) / Math.pow(10, tokenA?.decimals || 9)) * share).toFixed(2);
-            amountB = ((parseInt(poolAccount.reserveB.toString()) / Math.pow(10, tokenB?.decimals || 9)) * share).toFixed(2);
+            amountA = ((parseInt(poolAccount.reserveA.toString()) / Math.pow(10, decA)) * share).toFixed(2);
+            amountB = ((parseInt(poolAccount.reserveB.toString()) / Math.pow(10, decB)) * share).toFixed(2);
           }
         } catch (e) { }
 
-        const tokenA = tokensData.find((t: any) => t.mintAddress === tokenAMintStr);
-        const tokenB = tokensData.find((t: any) => t.mintAddress === tokenBMintStr);
+        const symA = tokenAMintStr.slice(0, 4);
+        const symB = tokenBMintStr.slice(0, 4);
 
         return {
-          symbol: `${tokenA?.symbol || '?'}-${tokenB?.symbol || '?'}`,
+          symbol: `${symA}-${symB}`,
           mint: lpMintStr,
           tokenAMint: tokenAMintStr,
           tokenBMint: tokenBMintStr,

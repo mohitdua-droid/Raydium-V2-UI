@@ -59,15 +59,34 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
       const provider = new AnchorProvider(connection, {} as any, { commitment: "confirmed" });
       const program = new Program(idl as Idl, provider);
 
-      const tokensRes = await fetch('/mintaddresses.json?t=' + Date.now());
-      const tokensData = await tokensRes.json();
-      const symbolMap = new Map<string, string>(tokensData.map((m: any) => [m.mintAddress, m.symbol]));
-      const mintDecimalsMap = new Map<string, number>(tokensData.map((m: any) => [m.mintAddress, m.decimals]));
+      const onChainPools = await (program.account as any).poolState.all();
+
+      const uniqueMints = new Set<string>();
+      onChainPools.forEach((p: any) => {
+        uniqueMints.add(p.account.mintA.toBase58());
+        uniqueMints.add(p.account.mintB.toBase58());
+      });
+      const mintArray = Array.from(uniqueMints);
+      const mintPubkeys = mintArray.map(m => new PublicKey(m));
+
+      const mintInfos = [];
+      for (let i = 0; i < mintPubkeys.length; i += 100) {
+        const chunk = mintPubkeys.slice(i, i + 100);
+        const infos = await connection.getMultipleAccountsInfo(chunk);
+        mintInfos.push(...infos);
+      }
+
+      const mintDecimalsMap = new Map<string, number>();
+      mintInfos.forEach((info, i) => {
+        if (info && info.data && info.data.length >= 82) {
+          mintDecimalsMap.set(mintArray[i], info.data[44]);
+        }
+      });
 
       const configs = await (program.account as any).ammConfig.all();
       const configMap = new Map<string, number>(configs.map((c: any) => [c.publicKey.toBase58(), c.account.index]));
 
-      const onChainPools = await (program.account as any).poolState.all();
+
 
       const loadedPools: Pool[] = await Promise.all(onChainPools.map(async (p: any) => {
         const poolAccount = p.account;
@@ -100,14 +119,14 @@ export const LiquidityScreen: React.FC<LiquidityScreenProps> = ({
         return {
           id: poolPubkeyStr,
           tokenA: {
-            symbol: symbolMap.get(tokenAMint) || tokenAMint.slice(0, 4),
-            name: symbolMap.get(tokenAMint) || "Unknown",
+            symbol: tokenAMint.slice(0, 4),
+            name: tokenAMint.slice(0, 4),
             mint: tokenAMint,
             decimals: decA
           },
           tokenB: {
-            symbol: symbolMap.get(tokenBMint) || tokenBMint.slice(0, 4),
-            name: symbolMap.get(tokenBMint) || "Unknown",
+            symbol: tokenBMint.slice(0, 4),
+            name: tokenBMint.slice(0, 4),
             mint: tokenBMint,
             decimals: decB
           },

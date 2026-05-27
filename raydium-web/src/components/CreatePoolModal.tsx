@@ -75,9 +75,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
   useEffect(() => {
     const fetchTokensAndBalances = async () => {
       try {
-        const response = await fetch('/mintaddresses.json?t=' + Date.now());
-        const data = await response.json();
-
         if (fullAddress) {
           const connection = new Connection("https://api.devnet.solana.com", "confirmed");
           const userPubkey = new PublicKey(fullAddress);
@@ -89,16 +86,19 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
 
           const allAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
 
-          const updatedTokens = data.map((token: any) => {
-            const acc = allAccounts.find(a => a.account.data.parsed.info.mint === token.mintAddress);
+          const updatedTokens = allAccounts.map((acc: any) => {
+            const info = acc.account.data.parsed.info;
             return {
-              ...token,
-              balance: acc?.account.data.parsed.info.tokenAmount.uiAmountString || "0"
+              symbol: info.mint.slice(0, 4),
+              name: info.mint.slice(0, 4),
+              mintAddress: info.mint,
+              decimals: info.tokenAmount.decimals,
+              balance: info.tokenAmount.uiAmountString || "0"
             };
           });
           setTokens(updatedTokens);
         } else {
-          setTokens(data);
+          setTokens([]);
         }
       } catch (error) {
         console.error('Error fetching tokens:', error);
@@ -156,11 +156,13 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
   const handleAddManualToken = async () => {
     let decimals = 9;
     try {
-      const res = await fetch(`http://localhost:3001/api/token-info/${searchQuery}`);
-      const data = await res.json();
-      if (data.decimals !== undefined) decimals = data.decimals;
+      const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+      const info = await connection.getParsedAccountInfo(new PublicKey(searchQuery));
+      if (info.value && (info.value.data as any).parsed) {
+         decimals = (info.value.data as any).parsed.info.decimals;
+      }
     } catch (e) {
-      console.warn("Failed to fetch decimals from backend, falling back to 9", e);
+      console.warn("Failed to fetch decimals on-chain, falling back to 9", e);
     }
 
     const newToken: Token = {
@@ -194,19 +196,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
       };
       const provider = new AnchorProvider(connection, wallet as any, { commitment: "confirmed" });
       const program = new Program(idl as Idl, provider);
-
-      // 1. Save any new tokens to mintaddresses.json (Metadata only)
-      for (const token of newTokensToSave) {
-        try {
-          await fetch('http://localhost:3001/api/save-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(token),
-          });
-        } catch (e) {
-          console.warn("Could not save new token metadata to local server:", e);
-        }
-      }
 
       // 2. Prepare transaction accounts
       const mintA = new PublicKey(baseToken.mintAddress);
@@ -270,28 +259,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
         .rpc();
 
       console.log('Pool initialized successfully, tx:', tx);
-
-      // 4. Save pool info to pools.json so it appears in the Liquidity list
-      try {
-        await fetch('http://localhost:3001/api/save-pool', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pool: pool.toBase58(),
-            ammConfig: ammConfig.toBase58(),
-            configIndex,
-            tokenAMint: tokenAMint.toBase58(),
-            tokenBMint: tokenBMint.toBase58(),
-            lpMint: lpMint.toBase58(),
-            authority: authority.toBase58(),
-            vaultA: vaultA.toBase58(),
-            vaultB: vaultB.toBase58(),
-            programId: program.programId.toBase58(),
-          }),
-        });
-      } catch (e) {
-        console.warn("Could not save new pool metadata to local server:", e);
-      }
 
       onClose();
     } catch (err: any) {

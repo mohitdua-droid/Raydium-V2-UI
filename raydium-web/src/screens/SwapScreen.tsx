@@ -71,11 +71,44 @@ export const SwapScreen: React.FC<SwapScreenProps> = ({ connectedWallet, fullAdd
 
   const fetchTokensAndBalances = async () => {
     try {
-      const response = await fetch('/mintaddresses.json?t=' + Date.now()); // Avoid caching
-      const data: Token[] = await response.json();
+      const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+      const provider = new AnchorProvider(connection, {} as any, { commitment: "confirmed" });
+      const program = new Program(idl as Idl, provider);
+
+      const onChainPools = await (program.account as any).poolState.all();
+      const uniqueMints = new Set<string>();
+      onChainPools.forEach((p: any) => {
+        uniqueMints.add(p.account.mintA.toBase58());
+        uniqueMints.add(p.account.mintB.toBase58());
+      });
+      const mintArray = Array.from(uniqueMints);
+      const mintPubkeys = mintArray.map(m => new PublicKey(m));
+      
+      const mintInfos = [];
+      for (let i = 0; i < mintPubkeys.length; i += 100) {
+        const chunk = mintPubkeys.slice(i, i + 100);
+        const infos = await connection.getMultipleAccountsInfo(chunk);
+        mintInfos.push(...infos);
+      }
+      
+      const data: Token[] = mintInfos.map((info, i) => {
+        const mintStr = mintArray[i];
+        let decimals = 9;
+        if (info && info.data && info.data.length >= 82) {
+          decimals = info.data[44];
+        }
+        return {
+          symbol: mintStr.slice(0, 4),
+          name: mintStr.slice(0, 4),
+          decimals,
+          mintAddress: mintStr,
+          ata: '',
+          minted: 0,
+          network: 'devnet'
+        };
+      });
 
       if (fullAddress) {
-        const connection = new Connection("https://api.devnet.solana.com", "confirmed");
         const userPubkey = new PublicKey(fullAddress);
 
         const [tokenAccounts, token2022Accounts] = await Promise.all([

@@ -108,13 +108,31 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         console.warn("Could not fetch configs:", e);
       }
 
-      const tokensRes = await fetch('/mintaddresses.json?t=' + Date.now());
-      const tokensData = await tokensRes.json();
-      const symbolMap = new Map<string, string>(tokensData.map((m: any) => [m.mintAddress, m.symbol]));
-      const decimalMap = new Map<string, number>(tokensData.map((m: any) => [m.mintAddress, m.decimals || 9]));
+      const onChainPools = await (program.account as any).poolState.all();
+      
+      const uniqueMints = new Set<string>();
+      onChainPools.forEach((p: any) => {
+        uniqueMints.add(p.account.mintA.toBase58());
+        uniqueMints.add(p.account.mintB.toBase58());
+      });
+      const mintArray = Array.from(uniqueMints);
+      const mintPubkeys = mintArray.map(m => new anchor.web3.PublicKey(m));
+      
+      const mintInfos = [];
+      for (let i = 0; i < mintPubkeys.length; i += 100) {
+        const chunk = mintPubkeys.slice(i, i + 100);
+        const infos = await connection.getMultipleAccountsInfo(chunk);
+        mintInfos.push(...infos);
+      }
+      
+      const decimalMap = new Map<string, number>();
+      mintInfos.forEach((info, i) => {
+        if (info && info.data && info.data.length >= 82) {
+          decimalMap.set(mintArray[i], info.data[44]);
+        }
+      });
 
       const configMap = new Map<string, number>(allConfigs.map((c: any) => [c.publicKey.toBase58(), c.account.index]));
-      const onChainPools = await (program.account as any).poolState.all();
 
       const loadedPools: Pool[] = await Promise.all(onChainPools.map(async (p: any) => {
         const poolAccount = p.account;
@@ -135,13 +153,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         return {
           id: poolPubkeyStr,
           tokenA: {
-            symbol: symbolMap.get(tokenAMintStr) || tokenAMintStr.slice(0, 4),
-            name: symbolMap.get(tokenAMintStr) || "Unknown",
+            symbol: tokenAMintStr.slice(0, 4),
+            name: tokenAMintStr.slice(0, 4),
             mint: tokenAMintStr,
           },
           tokenB: {
-            symbol: symbolMap.get(tokenBMintStr) || tokenBMintStr.slice(0, 4),
-            name: symbolMap.get(tokenBMintStr) || "Unknown",
+            symbol: tokenBMintStr.slice(0, 4),
+            name: tokenBMintStr.slice(0, 4),
             mint: tokenBMintStr,
           },
           liquidity: `(${valA}/${valB})`,
@@ -245,7 +263,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       const response = await fetch('http://localhost:3001/api/update-pool-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poolId, status: newStatus })
+        body: JSON.stringify({ 
+          poolId, 
+          status: newStatus,
+          mintA: pool.tokenA.mint,
+          mintB: pool.tokenB.mint
+        })
       });
 
       const result = await response.json();

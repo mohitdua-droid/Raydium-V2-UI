@@ -11,71 +11,6 @@ const port = 3001;
 app.use(cors());
 app.use(bodyParser.json());
 
-const MINT_PATHS = [
-  path.join(__dirname, 'raydium-web/src/assets/data/mintaddresses.json'),
-  path.join(__dirname, 'raydium-web/public/mintaddresses.json'),
-  path.join(__dirname, 'scripts/mintaddresses.json')
-];
-
-app.post('/api/save-token', (req, res) => {
-  const newToken = req.body;
-  
-  try {
-    MINT_PATHS.forEach(p => {
-      let tokens = [];
-      if (fs.existsSync(p)) {
-        tokens = JSON.parse(fs.readFileSync(p, 'utf-8'));
-      }
-      
-      if (!tokens.find(t => t.mintAddress === newToken.mintAddress)) {
-        tokens.push({
-          ...newToken,
-          network: 'devnet',
-          createdAt: new Date().toISOString()
-        });
-        fs.writeFileSync(p, JSON.stringify(tokens, null, 2));
-        console.log(`✅ Token ${newToken.symbol} saved to ${path.relative(__dirname, p)}`);
-      }
-    });
-    
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Error saving token:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const POOL_PATHS = [
-  path.join(__dirname, 'raydium-web/src/assets/data/pools.json'),
-  path.join(__dirname, 'raydium-web/public/pools.json')
-];
-
-app.post('/api/save-pool', (req, res) => {
-  const newPool = req.body;
-  
-  try {
-    POOL_PATHS.forEach(p => {
-      let pools = [];
-      if (fs.existsSync(p)) {
-        pools = JSON.parse(fs.readFileSync(p, 'utf-8'));
-      }
-      
-      if (!pools.find(pool => pool.pool === newPool.pool)) {
-        pools.push({
-          ...newPool,
-          initializedAt: new Date().toISOString()
-        });
-        fs.writeFileSync(p, JSON.stringify(pools, null, 2));
-        console.log(`✅ Pool ${newPool.pool} saved to ${path.relative(__dirname, p)}`);
-      }
-    });
-    
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Error saving pool:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 const WALLET_MAP = {};
 
@@ -138,23 +73,10 @@ app.post('/api/init-pool', (req, res) => {
 });
 
 app.post('/api/update-pool-status', (req, res) => {
-  const { poolId, status } = req.body;
+  const { poolId, status, mintA, mintB } = req.body;
   
-  let mintA = "";
-  let mintB = "";
-  try {
-    const pools = JSON.parse(fs.readFileSync(POOL_PATHS[0], 'utf-8'));
-    const pool = pools.find(p => p.pool === poolId);
-    if (pool) {
-      mintA = pool.tokenAMint;
-      mintB = pool.tokenBMint;
-    }
-  } catch (e) {
-    console.error("Error reading pools for update:", e);
-  }
-
   if (!mintA || !mintB) {
-    return res.status(404).json({ error: "Pool not found in local data" });
+    return res.status(400).json({ error: "mintA and mintB are required" });
   }
 
   // Provide environment variables to the script so it can initialize the Anchor provider correctly
@@ -167,25 +89,7 @@ app.post('/api/update-pool-status', (req, res) => {
       return res.status(500).json({ error: error.message, stderr, stdout });
     }
     
-    try {
-      POOL_PATHS.forEach(p => {
-        if (fs.existsSync(p)) {
-          let pools = JSON.parse(fs.readFileSync(p, 'utf-8'));
-          pools = pools.map(pool => {
-            if (pool.pool === poolId) {
-              return { ...pool, status: parseInt(status) };
-            }
-            return pool;
-          });
-          fs.writeFileSync(p, JSON.stringify(pools, null, 2));
-          console.log(`✅ Updated ${poolId} status to ${status} in ${path.relative(__dirname, p)}`);
-        }
-      });
-      res.json({ success: true, stdout });
-    } catch (err) {
-      console.error('Error updating pools.json:', err);
-      res.status(500).json({ error: "On-chain success, but failed to update local JSON", stdout });
-    }
+    res.json({ success: true, stdout });
   });
 });
 
